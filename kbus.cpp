@@ -9,7 +9,7 @@ using namespace std;
 
 const short MAX=128,MAXP=9999,MAXL=999,M=1<<14;
 
-class LINE{
+class LINE{		//bus line class
 public:
 	short ticket,type,nUp,nDown;
 	short up[MAX],down[MAX];
@@ -17,12 +17,12 @@ public:
 	LINE(){nUp=0;nDown=0;}
 };
 
-class STOP{
+class STOP{		//bus stop class
 public:
 	short n;
 	short lines[MAX],iUp[MAX],iDown[MAX];
 
-	STOP(){
+	STOP(){		//initialize the stop object
 		int i;
 		n=0;
 		for(i=0;i<MAX;i++){
@@ -32,7 +32,7 @@ public:
 	}
 };
 
-class NODE{
+class NODE{		//node class in the searching space
 public:
 	short n;
 	bool ex;
@@ -44,16 +44,17 @@ public:
 	}
 };
 
-ifstream fin("busline.txt");
+ifstream fin("busline.txt");	//bus network data file
 LINE Lines[MAXL];
 STOP Stops[MAXP];
 NODE Nodes[MAXP];
-short adj_time=3,
-	change_time=5,
-	ticket_time=10;
+short adj_time=3,		//traveling time between adjacent stops
+	change_time=5;	//transferring time
+//	ticket_time=10;	//value-time ratio
 short adj[MAXP][MAXP],reach[MAXP],iter[MAXP],maxp,maxl;
 
 void init_adj(){
+// initialize the adjacent matrix
 	int i,j,k,x,y;
 	
 	for(i=0;i<=maxp;i++){
@@ -81,6 +82,7 @@ void init_adj(){
 }
 
 void dijkstra(short n,short s,short map[MAXP][MAXP],short cost[MAXP]){
+// compute the minimum tranferring times using dijkstra algorithm
 	short i;
 	typedef pair<short,short> node;
 	set<node> Q;
@@ -111,6 +113,7 @@ void dijkstra(short n,short s,short map[MAXP][MAXP],short cost[MAXP]){
 }
 
 bool load(){
+// load the data in file busline.txt
 	short line,stop,last,i,j;
 	char ch;
 
@@ -190,21 +193,23 @@ bool load(){
 }
 
 bool input(short &o,short &d,short &k,short &g){
-	cout<<"\n>The origin and the destination,\n seperated by a blank(Press Ctrl+D to quit): ";
+// input the O&D, maximum transferring times and k
+	cout<<"\n>The origin and the destination, seperated by a blank: ";
 	if(!(cin>>o>>d)){
 		cout<<endl;
 		return false;
 	}
 	else{
-		cout<<">The maximun times of changing buses(less than 5): ";
+		cout<<">The maximun times of transferring: ";
 		cin>>g;
-		cout<<">Search the first k shortest path,then k= ";
+		cout<<">Search the first k shortest routes,then k= ";
 		cin>>k;
 		return true;
 	}
 }
 
 void output(short O,short D){
+// output the first k shortest routes
 	vector<short> out;
 	vector<short>::reverse_iterator rp;
 	vector< pair<short,short> > s;
@@ -221,7 +226,7 @@ void output(short O,short D){
 
 		for(p=s.begin(),i=1;p!=s.end();p++,i++){
 			cout<<setfill(' ');
-			cout<<"Path"<<setw(2)<<i<<" -> Cost"<<setw(3)<<Nodes[D].cost[p->second]<<" Depth "<<Nodes[D].it[p->second];
+			cout<<"Path"<<setw(2)<<i<<" (Time"<<setw(3)<<Nodes[D].cost[p->second]<<", Transfer"<<setw(2)<<Nodes[D].it[p->second]<<')';
 			pre=D;
 			pos=p->second;
 			out.clear();
@@ -243,6 +248,7 @@ void output(short O,short D){
 }
 
 void search(){
+// search the first k shortest routes
 	short O,D,K,G,s,i,ii,j,k;
 	short iline,ipos,inode,icost,max,n;
 	queue<short> Q;
@@ -369,8 +375,11 @@ void search(){
 }
 
 int main(){
-	cout<<"A Query Program for Urban Public Transportation Network\nUsing k-shortest paths algorithm\n";
-	
+	cout<<"A Query Program for Urban Public Transportation Network\nUsing k-shortest paths algorithm\n\n";
+	cout<<" Transferring time: ";
+	cin>>change_time;
+	cout<<" Traveling time of adjacent stops: ";
+	cin>>adj_time;
 	if(load())
 		search();
 
