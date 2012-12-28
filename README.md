@@ -12,6 +12,11 @@ destinations. The algorithm is implemented and tested with
 a real world transit network including more than _500 lines 
 and 4000 stops_. 
 
+[Here](https://github.com/wlxiong/k_shortest_bus_routes/wiki/Dijkstra's-algorithm-and-priority-queue) 
+is a note on Dijkstra's algorithm and priority queue. Dijkstra's algorithm is not the core of my
+algorithm (only used to calculate the heuristic value), but someone asked me about the implementation. 
+So I post this note in the [wiki](https://github.com/wlxiong/k_shortest_bus_routes/wiki) page. 
+
 Publication
 ===========
 

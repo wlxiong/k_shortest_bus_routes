@@ -82,7 +82,7 @@ void init_adj(){
 }
 
 void dijkstra(short n,short s,short map[MAXP][MAXP],short cost[MAXP]){
-// compute the minimum tranferring times using dijkstra algorithm
+// compute the minimum number of transfers between s and any other node
 	short i;
 	typedef pair<short,short> node;
 	set<node> Q;
@@ -193,14 +193,14 @@ bool load(){
 }
 
 bool input(short &o,short &d,short &k,short &g){
-// input the O&D, maximum transferring times and k
-	cout<<"\n>The origin and the destination, seperated by a blank: ";
+// input the O&D, maximum number of transfers and k
+	cout<<"\n>The origin and the destination, separated by a blank: ";
 	if(!(cin>>o>>d)){
 		cout<<endl;
 		return false;
 	}
 	else{
-		cout<<">The maximun times of transferring: ";
+		cout<<">The maximum number of transfers: ";
 		cin>>g;
 		cout<<">Search the first k shortest routes,then k= ";
 		cin>>k;
