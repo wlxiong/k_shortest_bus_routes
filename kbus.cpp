@@ -1,10 +1,10 @@
-#include<iostream>
-#include<iomanip>
-#include<fstream>
-#include<vector>
-#include<set>
-#include<queue>
-#include<algorithm>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <vector>
+#include <set>
+#include <queue>
+#include <algorithm>
 using namespace std;
 
 const short MAX = 128, MAXP = 9999, MAXL = 999, M = 1 << 14;
@@ -135,43 +135,70 @@ bool load()
     maxp = 0;
     maxl = 0;
     ch = fin.peek();
+    // check if it is the 'END' of file
     while (ch != 'E') {
+        // L002
+        // 0
+        // S3748-S2160-S1223-S1404-S2377-S1477-S2017-S2019-S1321-S1381-S1383-S1691-S3766-S1729-S2654-S3231-S3917-S2303-S1327-S3068-S2833-S1733-S2113-S2636-S0012-S1968-S0004
+        // S0004-S1968-S0012-S2636-S2113-S2112-S2833-S0618-S1327-S2303-S3917-S3231-S2654-S1729-S3766-S1691-S1383-S1381-S1321-S2019-S2017-S1477-S1404-S1223-S2160-S3748
+
+        // get line id prefix 'L'
         ch = fin.get();
+        // get line id
         fin >> line;
         if (line > maxl)
             maxl = line;
+        // get pricing type
         fin >> Lines[line].ticket;
         Lines[line].type = 1;
+        // get '\n' after pricing type
         ch = fin.get();
+        // check if reaching the end of line
         ch = fin.peek();
         while (ch != '\n') {
+            // get stop id prefix 'S'
             ch = fin.get();
+            // get stop id
             fin >> stop;
             if (stop > maxp)
                 maxp = stop;
+            // get stop separator '-'
             ch = fin.get();
+            // add stop to the up bound of the line
             Lines[line].up[ Lines[line].nUp ] = stop;
+            // add line to the stop's line list
             Stops[stop].lines[ Stops[stop].n ] = line;
+            // save the position of stop along the line
             Stops[stop].iUp[ Stops[stop].n ] = Lines[line].nUp;
+            // increase counts
             Lines[line].nUp++;
             Stops[stop].n++;
         }
+        // peak the next char
         ch = fin.peek();
         if (ch != 'L' && ch != 'E') {
+            // if stops on the down bound are provided
             while (ch != '\n') {
+                // get stop id prefix 'S'
                 ch = fin.get();
+                // get stop id
                 fin >> stop;
                 if (stop > maxp)
                     maxp = stop;
+                // get stop separator '-'
                 ch = fin.get();
+                // add stop to the down bound of the line
                 Lines[line].down[ Lines[line].nDown ] = stop;
                 if (Stops[stop].n < 1) {
+                    // if there is no line passing stop, the just add this first one
                     Stops[stop].lines[ Stops[stop].n ] = line;
                     Stops[stop].n++;
                 } else {
                     if (Stops[stop].lines[ Stops[stop].n - 1 ] == line)
+                        // update the position of stop along the line
                         Stops[stop].iDown[ Stops[stop].n - 1 ] = Lines[line].nDown;
                     else {
+                        // save the position of stop along the line
                         Stops[stop].iDown[ Stops[stop].n ] = Lines[line].nDown;
                         Stops[stop].n++;
                     }
@@ -179,15 +206,22 @@ bool load()
                 Lines[line].nDown++;
             }
         } else {
+            // check if this is a cyclic bus line
             if ( Lines[line].up[0] == Lines[line].up[ Lines[line].nUp - 1 ]) {
+                // change the line type to 0 : cyclic
                 Lines[line].type = 0;
+                // if the up bound stops of the line are 1 2 3 4 5 6
+                // then the for loop changes the list of stops to
+                // 1 2 3 4 5 6 1 2 3 4 5 6
                 for (i = 0, j = Lines[line].nUp; i < Lines[line].nUp - 1; i++, j++)
                     Lines[line].up[j] = Lines[line].up[i];
             } else {
-                last = 0;
+                // if the bus line is not cyclic, then
+                // the down bound list is a reverse list of the up bound
                 for (i = Lines[line].nUp - 1, j = 0; i >= 0; i--, j++) {
-                    Lines[line].down[j] = Lines[line].up[i];
-                    Stops[ Lines[line].down[j] ].iDown[ Stops[ Lines[line].down[j] ].n - 1 ] = j;
+                    stop = Lines[line].up[i];
+                    Lines[line].down[j] = stop;
+                    Stops[stop].iDown[ Stops[stop].n - 1 ] = j;
                 }
                 Lines[line].nDown = Lines[line].nUp;
             }
