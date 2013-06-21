@@ -50,7 +50,7 @@ public:
     }
 };
 
-ifstream fin("busline.txt");    //bus network data file
+ifstream fin;    //bus network data file
 LINE Lines[MAXL];
 STOP Stops[MAXP];
 NODE Nodes[MAXP];
@@ -123,7 +123,7 @@ void dijkstra(short n, short s, short map[MAXP][MAXP], short cost[MAXP])
 bool load()
 {
     // load the data in file busline.txt
-    short line, stop, last, i, j;
+    short line, stop, i, j;
     char ch;
 
     if (fin.fail()) {
@@ -136,7 +136,7 @@ bool load()
     maxl = 0;
     ch = fin.peek();
     // check if it is the 'END' of file
-    while (ch != 'E') {
+    while (ch != 'E' || ch == EOF) {
         // L002
         // 0
         // S3748-S2160-S1223-S1404-S2377-S1477-S2017-S2019-S1321-S1381-S1383-S1691-S3766-S1729-S2654-S3231-S3917-S2303-S1327-S3068-S2833-S1733-S2113-S2636-S0012-S1968-S0004
@@ -190,7 +190,7 @@ bool load()
                 // add stop to the down bound of the line
                 Lines[line].down[ Lines[line].nDown ] = stop;
                 if (Stops[stop].n < 1) {
-                    // if there is no line passing stop, the just add this first one
+                    // if there is no line passing stop, just add this first one
                     Stops[stop].lines[ Stops[stop].n ] = line;
                     Stops[stop].n++;
                 } else {
@@ -208,10 +208,10 @@ bool load()
         } else {
             // check if this is a cyclic bus line
             if ( Lines[line].up[0] == Lines[line].up[ Lines[line].nUp - 1 ]) {
-                // change the line type to 0 : cyclic
+                // mark the line type as 0 : cyclic
                 Lines[line].type = 0;
                 // if the up bound stops of the line are 1 2 3 4 5 6
-                // then the for loop changes the list of stops to
+                // then the for loop augments the list of stops to
                 // 1 2 3 4 5 6 1 2 3 4 5 6
                 for (i = 0, j = Lines[line].nUp; i < Lines[line].nUp - 1; i++, j++)
                     Lines[line].up[j] = Lines[line].up[i];
@@ -412,7 +412,7 @@ void search()
 
 }
 
-int main()
+int main(int argc, char *argv[])
 {
     cout << "A Query Program for Urban Public Transportation Network\n";
     cout << "Using k-shortest paths algorithm\n\n";
@@ -420,6 +420,10 @@ int main()
     cin >> change_time;
     cout << " Traveling time of adjacent stops: ";
     cin >> adj_time;
+    if (argc < 2)
+        fin.open("busline.txt");
+    else
+        fin.open(argv[1]);
     if (load())
         search();
 
