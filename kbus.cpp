@@ -1,6 +1,8 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <sstream>
+#include <string>
 #include <vector>
 #include <set>
 #include <queue>
@@ -120,115 +122,154 @@ void dijkstra(short n, short s, short map[MAXP][MAXP], short cost[MAXP])
 
 }
 
+vector<string> split(const string &s, char delim){
+    stringstream ss(s);
+    vector<string> items;
+    string item;
+    while(getline(ss, item, delim))
+        items.push_back(item);
+    return items;
+}
+
+void trim(string &s){
+    string::iterator left, right;
+    for(left = s.begin(); left != s.end() && isspace(*left); left++)
+        ;
+    s.erase(s.begin(), left);
+    for(right = s.end() - 1; right != s.begin() && isspace(*right); right--)
+        ;
+    s.erase(right+1, s.end());
+}
+
+bool readline(ifstream &input, string &buf){
+    getline(input, buf);
+    trim(buf);
+    return !input.eof();
+}
+
+bool parsestop(string &buf, vector<int> &stops){
+    vector<string> tokens = split(buf, '-');
+    vector<string>::iterator it;
+    string s;
+    for(it = tokens.begin(); it != tokens.end(); it++){
+        trim(*it);
+        if (*it->begin() == 'S')
+            s = string(it->begin()+1, it->end());
+        else if (isdigit(*it->begin()))
+            s = string(*it);
+        else
+            return false;
+        stops.push_back(atoi(s.c_str()));
+    }
+    return true;
+}
+
+template<class T>
+void dispvector(vector<T> &v){
+    typename vector<T>::iterator it;
+    if (v.empty())
+        return;
+    it = v.begin();
+    cout << *it++;
+    for( ; it != v.end(); it++)
+        cout << ", " << *it;
+    cout << endl;
+}
+
 bool load()
 {
     // load the data in file busline.txt
     short line, stop, i, j;
-    char ch;
+    string buf;
 
-    if (fin.fail()) {
-        cout << "\nCan't open file busline.txt!\n\n";
+    maxp = 0;   // the max stop nubmer
+    maxl = 0;   // the max line number
+    // read the first line
+    while(readline(fin, buf)){
+    if (buf.find("END") != string::npos)
+        return true;
+    if (buf[0] != 'L')
         return false;
-    } else {
-        cout << "\nIt will take a few seconds to load the network data...\n";
+    string s(buf.begin()+1, buf.end());
+    line = atoi(s.c_str());
+    // set the type to the default value
+    Lines[line].type = 1;
+    if (line > maxl)
+        maxl = line;
+    // read the second line
+    readline(fin, buf);
+    // set the ticket type
+    Lines[line].ticket = atoi(buf.c_str());
+    // read the third line: list of stops
+    readline(fin, buf);
+    // parse the list of stops
+    vector<int> vstops;
+    parsestop(buf, vstops);
+    dispvector(vstops);
+    vector<int>::iterator it;
+    for(it = vstops.begin(); it != vstops.end(); it++){
+        stop = *it;
+        // add stop to the up bound of the line
+        Lines[line].up[ Lines[line].nUp ] = stop;
+        // add line to the stop's line list
+        Stops[stop].lines[ Stops[stop].n ] = line;
+        // save the position of stop along the line
+        Stops[stop].iUp[ Stops[stop].n ] = Lines[line].nUp;
+        // increase counts
+        Lines[line].nUp++;
+        Stops[stop].n++;
     }
-    maxp = 0;
-    maxl = 0;
-    ch = fin.peek();
-    // check if it is the 'END' of file
-    while (ch != 'E' || ch == EOF) {
-        // L002
-        // 0
-        // S3748-S2160-S1223-S1404-S2377-S1477-S2017-S2019-S1321-S1381-S1383-S1691-S3766-S1729-S2654-S3231-S3917-S2303-S1327-S3068-S2833-S1733-S2113-S2636-S0012-S1968-S0004
-        // S0004-S1968-S0012-S2636-S2113-S2112-S2833-S0618-S1327-S2303-S3917-S3231-S2654-S1729-S3766-S1691-S1383-S1381-S1321-S2019-S2017-S1477-S1404-S1223-S2160-S3748
-
-        // get line id prefix 'L'
-        ch = fin.get();
-        // get line id
-        fin >> line;
-        if (line > maxl)
-            maxl = line;
-        // get pricing type
-        fin >> Lines[line].ticket;
-        Lines[line].type = 1;
-        // get '\n' after pricing type
-        ch = fin.get();
-        // check if reaching the end of line
-        ch = fin.peek();
-        while (ch != '\n') {
-            // get stop id prefix 'S'
-            ch = fin.get();
-            // get stop id
-            fin >> stop;
-            if (stop > maxp)
-                maxp = stop;
-            // get stop separator '-'
-            ch = fin.get();
-            // add stop to the up bound of the line
-            Lines[line].up[ Lines[line].nUp ] = stop;
-            // add line to the stop's line list
-            Stops[stop].lines[ Stops[stop].n ] = line;
-            // save the position of stop along the line
-            Stops[stop].iUp[ Stops[stop].n ] = Lines[line].nUp;
-            // increase counts
-            Lines[line].nUp++;
-            Stops[stop].n++;
-        }
-        // peak the next char
-        ch = fin.peek();
-        if (ch != 'L' && ch != 'E') {
-            // if stops on the down bound are provided
-            while (ch != '\n') {
-                // get stop id prefix 'S'
-                ch = fin.get();
-                // get stop id
-                fin >> stop;
-                if (stop > maxp)
-                    maxp = stop;
-                // get stop separator '-'
-                ch = fin.get();
-                // add stop to the down bound of the line
-                Lines[line].down[ Lines[line].nDown ] = stop;
-                if (Stops[stop].n < 1) {
-                    // if there is no line passing stop, just add this first one
-                    Stops[stop].lines[ Stops[stop].n ] = line;
-                    Stops[stop].n++;
-                } else {
-                    if (Stops[stop].lines[ Stops[stop].n - 1 ] == line)
-                        // update the position of stop along the line
-                        Stops[stop].iDown[ Stops[stop].n - 1 ] = Lines[line].nDown;
-                    else {
-                        // save the position of stop along the line
-                        Stops[stop].iDown[ Stops[stop].n ] = Lines[line].nDown;
-                        Stops[stop].n++;
-                    }
-                }
-                Lines[line].nDown++;
-            }
-        } else {
-            // check if this is a cyclic bus line
-            if ( Lines[line].up[0] == Lines[line].up[ Lines[line].nUp - 1 ]) {
-                // mark the line type as 0 : cyclic
-                Lines[line].type = 0;
-                // if the up bound stops of the line are 1 2 3 4 5 6
-                // then the for loop augments the list of stops to
-                // 1 2 3 4 5 6 1 2 3 4 5 6
-                for (i = 0, j = Lines[line].nUp; i < Lines[line].nUp - 1; i++, j++)
-                    Lines[line].up[j] = Lines[line].up[i];
+    if(fin.peek() == 'S'){
+        // read the forth line
+        readline(fin, buf);
+        // parse the list of stops in the other direction
+        vector<int> vstops;
+        parsestop(buf, vstops);
+        dispvector(vstops);
+        vector<int>::iterator it;
+        for(it = vstops.begin(); it != vstops.end(); it++){
+            stop = *it;
+            // add stop to the down bound of the line
+            Lines[line].down[ Lines[line].nDown ] = stop;
+            if (Stops[stop].n < 1) {
+                // if there is no line passing stop, just add this first one
+                Stops[stop].lines[ Stops[stop].n ] = line;
+                Stops[stop].n++;
             } else {
-                // if the bus line is not cyclic, then
-                // the down bound list is a reverse list of the up bound
-                for (i = Lines[line].nUp - 1, j = 0; i >= 0; i--, j++) {
-                    stop = Lines[line].up[i];
-                    Lines[line].down[j] = stop;
-                    Stops[stop].iDown[ Stops[stop].n - 1 ] = j;
+                if (Stops[stop].lines[ Stops[stop].n - 1 ] == line)
+                    // update the position of stop along the line
+                    Stops[stop].iDown[ Stops[stop].n - 1 ] = Lines[line].nDown;
+                else {
+                    // save the position of stop along the line
+                    Stops[stop].iDown[ Stops[stop].n ] = Lines[line].nDown;
+                    Stops[stop].n++;
                 }
-                Lines[line].nDown = Lines[line].nUp;
             }
+            Lines[line].nDown++;
         }
-        ch = fin.peek();
     }
-
+    else{
+        // check if this is a cyclic bus line
+        if ( Lines[line].up[0] == Lines[line].up[ Lines[line].nUp - 1 ]) {
+            // mark the line type as 0 : cyclic
+            Lines[line].type = 0;
+            // if the up bound stops of the line are 1 2 3 4 5 6
+            // then the for loop augments the list of stops to
+            // 1 2 3 4 5 6 1 2 3 4 5 6
+            for (i = 0, j = Lines[line].nUp; i < Lines[line].nUp - 1; i++, j++)
+                Lines[line].up[j] = Lines[line].up[i];
+        } else {
+            // if the bus line is not cyclic, then
+            // the down bound list is a reverse list of the up bound
+            for (i = Lines[line].nUp - 1, j = 0; i >= 0; i--, j++) {
+                stop = Lines[line].up[i];
+                Lines[line].down[j] = stop;
+                Stops[stop].iDown[ Stops[stop].n - 1 ] = j;
+            }
+            Lines[line].nDown = Lines[line].nUp;
+        }
+    }
+    }
     return true;
 }
 
@@ -424,8 +465,17 @@ int main(int argc, char *argv[])
         fin.open("busline.txt");
     else
         fin.open(argv[1]);
-    if (load())
+    if (fin.fail()) {
+        cout << "\nCan't open file!\n";
+        return false;
+    } else {
+        cout << "\nIt will take a few seconds to load the network data...\n";
+    }
+
+    if(load())
         search();
+    else
+        cout << "\nError in loading data!\n";
 
     return 0;
 }
