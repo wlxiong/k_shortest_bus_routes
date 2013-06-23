@@ -3,6 +3,8 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <cctype>
+#include <cstdio>
 #include <vector>
 #include <set>
 #include <queue>
@@ -52,7 +54,8 @@ public:
     }
 };
 
-ifstream fin;    //bus network data file
+ifstream fin;    // bus network data file
+ofstream flog("kbus.log");  // log file
 LINE Lines[MAXL];
 STOP Stops[MAXP];
 NODE Nodes[MAXP];
@@ -170,10 +173,10 @@ void dispvector(vector<T> &v){
     if (v.empty())
         return;
     it = v.begin();
-    cout << *it++;
+    flog << *it++;
     for( ; it != v.end(); it++)
-        cout << ", " << *it;
-    cout << endl;
+        flog << ", " << *it;
+    flog << endl;
 }
 
 bool load()
@@ -209,6 +212,7 @@ bool load()
     vector<int>::iterator it;
     for(it = vstops.begin(); it != vstops.end(); it++){
         stop = *it;
+        if (stop > maxp) maxp = stop;
         // add stop to the up bound of the line
         Lines[line].up[ Lines[line].nUp ] = stop;
         // add line to the stop's line list
@@ -229,6 +233,7 @@ bool load()
         vector<int>::iterator it;
         for(it = vstops.begin(); it != vstops.end(); it++){
             stop = *it;
+            if (stop > maxp) maxp = stop;
             // add stop to the down bound of the line
             Lines[line].down[ Lines[line].nDown ] = stop;
             if (Stops[stop].n < 1) {
@@ -273,23 +278,30 @@ bool load()
     return true;
 }
 
-bool input(short &o, short &d, short &k, short &g)
+bool input(short &k, short &g)
 {
-    // input the O&D, maximum number of transfers and k
-    cout << "\n>The origin and the destination, separated by a blank: ";
-    if (!(cin >> o >> d)) {
-        cout << endl;
+    cout << endl;
+    cout << "> The maximum number of transfers: ";
+    if (!(cin >> g))
         return false;
-    } else {
-        cout << ">The maximum number of transfers: ";
-        cin >> g;
-        cout << ">Search the first k shortest routes,then k= ";
-        cin >> k;
-        return true;
-    }
+    cout << "> Search the first k shortest routes, k = ";
+    if (!(cin >> k))
+        return false;
+    return true;
 }
 
-void output(short O, short D)
+bool input(short &o, short &d, short &k, short &g)
+{
+    // input the maximum number of transfers and k
+    if (!input(k, g))
+        return false;
+    cout << "> The origin and the destination, separated by a blank: ";
+    if (!(cin >> o >> d))
+        return false;
+    return true;
+}
+
+void output(ostream &fout, short O, short D)
 {
     // output the first k shortest routes
     vector<short> out;
@@ -298,17 +310,17 @@ void output(short O, short D)
     vector< pair<short, short> >::iterator p;
     short i, pre, pos, tmp;
 
-    cout << endl;
+    fout << endl;
     if (Nodes[D].n == 0)
-        cout << "No available path!\n";
+        fout << "No available path!\n";
     else {
         for (i = 0; i < Nodes[D].n; i++)
             s.push_back(pair<short, short>(Nodes[D].cost[i], i));
         sort(s.begin(), s.end());
 
         for (p = s.begin(), i = 1; p != s.end(); p++, i++) {
-            cout << setfill(' ');
-            cout << "Path" << setw(2) << i << " (Time" << setw(3) << Nodes[D].cost[p->second] << ", Transfer" << setw(2) << Nodes[D].it[p->second] << ')';
+            fout << setfill(' ');
+            fout << "Path" << setw(2) << i << " (Time" << setw(3) << Nodes[D].cost[p->second] << ", Transfer" << setw(2) << Nodes[D].it[p->second] << ')';
             pre = D;
             pos = p->second;
             out.clear();
@@ -319,126 +331,123 @@ void output(short O, short D)
                 pre = Nodes[pre].pre[pos];
                 pos = Nodes[tmp].pos[pos];
             }
-            cout << setfill('0');
-            cout << ": S" << setw(4) << O;
+            fout << setfill('0');
+            fout << ": S" << setw(4) << O;
             for (rp = out.rbegin(); rp != out.rend(); rp += 2)
-                cout << "-L" << setw(3) << *rp << "-S" << setw(4) << *(rp + 1);
-            cout << endl;
+                fout << "-L" << setw(3) << *rp << "-S" << setw(4) << *(rp + 1);
+            fout << endl;
         }
     }
-
 }
 
-void search()
+void search(short O, short D, short K, short G)
 {
     // search the first k shortest routes
-    short O, D, K, G, s, i, ii, j, k;
+    short s, i, ii, j, k;
     short iline, ipos, inode, icost, max, n;
     queue<short> Q;
 
-    while (input(O, D, K, G)) {
-        for (i = 0; i < maxp; i++)
-            Nodes[i].init();
-        dijkstra(maxp, D, adj, iter);
+    for (i = 0; i < maxp; i++)
+        Nodes[i].init();
+    dijkstra(maxp, D, adj, iter);
 
-        Nodes[O].cost[ Nodes[O].n ] = -change_time;
-        Nodes[O].pre[ Nodes[O].n ] = -1;
-        Nodes[O].pline[ Nodes[O].n ] = -1;
-        Nodes[O].it[ Nodes[O].n ] = -1;
-        Nodes[O].n++;
-        Q.push(O);
-        while (Q.empty() == false) {
-            s = Q.front();
-            Q.pop();
-            if (Nodes[s].ex || s == D)
-                continue;
-            else
-                Nodes[s].ex = true;
+    Nodes[O].cost[ Nodes[O].n ] = -change_time;
+    Nodes[O].pre[ Nodes[O].n ] = -1;
+    Nodes[O].pline[ Nodes[O].n ] = -1;
+    Nodes[O].it[ Nodes[O].n ] = -1;
+    Nodes[O].n++;
+    Q.push(O);
+    while (Q.empty() == false) {
+        s = Q.front();
+        Q.pop();
+        if (Nodes[s].ex || s == D)
+            continue;
+        else
+            Nodes[s].ex = true;
 
-            for (i = 0; i < Stops[s].n; i++) {
-                iline = Stops[s].lines[i];
-                for (j = 0; j < Nodes[s].n; j++) {
-                    if (Nodes[s].it[j] + iter[s] <= G) {
+        for (i = 0; i < Stops[s].n; i++) {
+            iline = Stops[s].lines[i];
+            for (j = 0; j < Nodes[s].n; j++) {
+                if (Nodes[s].it[j] + iter[s] <= G) {
 
-                        if (iline != Nodes[s].pline[j]) {
-                            if (Lines[iline].type == 1) {
-                                ipos = Stops[s].iUp[i];
-                                for (ii = ipos + 1; ii < Lines[iline].nUp; ii++) { //Upline
-                                    inode = Lines[iline].up[ii];
-                                    icost = Nodes[s].cost[j] + (ii - ipos) * adj_time + change_time;
-                                    n = Nodes[inode].n;
+                    if (iline != Nodes[s].pline[j]) {
+                        if (Lines[iline].type == 1) {
+                            ipos = Stops[s].iUp[i];
+                            for (ii = ipos + 1; ii < Lines[iline].nUp; ii++) { //Upline
+                                inode = Lines[iline].up[ii];
+                                icost = Nodes[s].cost[j] + (ii - ipos) * adj_time + change_time;
+                                n = Nodes[inode].n;
 
-                                    if (n < K) {
+                                if (n < K) {
+                                    Q.push(inode);
+                                    Nodes[inode].it[n] = Nodes[s].it[j] + 1;
+                                    Nodes[inode].pre[n] = s;
+                                    Nodes[inode].pos[n] = j;
+                                    Nodes[inode].pline[n] = iline;
+                                    Nodes[inode].cost[n] = icost;
+                                    Nodes[inode].n++;
+                                } else {
+                                    max = (int)(max_element(Nodes[inode].cost, &Nodes[inode].cost[n]) - Nodes[inode].cost);
+                                    if (Nodes[inode].cost[max] > icost) {
                                         Q.push(inode);
-                                        Nodes[inode].it[n] = Nodes[s].it[j] + 1;
-                                        Nodes[inode].pre[n] = s;
-                                        Nodes[inode].pos[n] = j;
-                                        Nodes[inode].pline[n] = iline;
-                                        Nodes[inode].cost[n] = icost;
-                                        Nodes[inode].n++;
-                                    } else {
-                                        max = (int)(max_element(Nodes[inode].cost, &Nodes[inode].cost[n]) - Nodes[inode].cost);
-                                        if (Nodes[inode].cost[max] > icost) {
-                                            Q.push(inode);
-                                            Nodes[inode].it[max] = Nodes[s].it[j] + 1;
-                                            Nodes[inode].pre[max] = s;
-                                            Nodes[inode].pos[max] = j;
-                                            Nodes[inode].pline[max] = iline;
-                                            Nodes[inode].cost[max] = icost;
-                                        }
+                                        Nodes[inode].it[max] = Nodes[s].it[j] + 1;
+                                        Nodes[inode].pre[max] = s;
+                                        Nodes[inode].pos[max] = j;
+                                        Nodes[inode].pline[max] = iline;
+                                        Nodes[inode].cost[max] = icost;
                                     }
                                 }
-                                ipos = Stops[s].iDown[i];
-                                for (ii = ipos + 1; ii < Lines[iline].nDown; ii++) { //Downline
-                                    inode = Lines[iline].down[ii];
-                                    icost = Nodes[s].cost[j] + (ii - ipos) * adj_time + change_time;
-                                    n = Nodes[inode].n;
+                            }
+                            ipos = Stops[s].iDown[i];
+                            for (ii = ipos + 1; ii < Lines[iline].nDown; ii++) { //Downline
+                                inode = Lines[iline].down[ii];
+                                icost = Nodes[s].cost[j] + (ii - ipos) * adj_time + change_time;
+                                n = Nodes[inode].n;
 
-                                    if (n < K) {
+                                if (n < K) {
+                                    Q.push(inode);
+                                    Nodes[inode].it[n] = Nodes[s].it[j] + 1;
+                                    Nodes[inode].pre[n] = s;
+                                    Nodes[inode].pos[n] = j;
+                                    Nodes[inode].pline[n] = iline;
+                                    Nodes[inode].cost[n] = icost;
+                                    Nodes[inode].n++;
+                                } else {
+                                    max = (int)(max_element(Nodes[inode].cost, &Nodes[inode].cost[n]) - Nodes[inode].cost);
+                                    if (Nodes[inode].cost[max] > icost) {
                                         Q.push(inode);
-                                        Nodes[inode].it[n] = Nodes[s].it[j] + 1;
-                                        Nodes[inode].pre[n] = s;
-                                        Nodes[inode].pos[n] = j;
-                                        Nodes[inode].pline[n] = iline;
-                                        Nodes[inode].cost[n] = icost;
-                                        Nodes[inode].n++;
-                                    } else {
-                                        max = (int)(max_element(Nodes[inode].cost, &Nodes[inode].cost[n]) - Nodes[inode].cost);
-                                        if (Nodes[inode].cost[max] > icost) {
-                                            Q.push(inode);
-                                            Nodes[inode].it[max] = Nodes[s].it[j] + 1;
-                                            Nodes[inode].pre[max] = s;
-                                            Nodes[inode].pos[max] = j;
-                                            Nodes[inode].pline[max] = iline;
-                                            Nodes[inode].cost[max] = icost;
-                                        }
+                                        Nodes[inode].it[max] = Nodes[s].it[j] + 1;
+                                        Nodes[inode].pre[max] = s;
+                                        Nodes[inode].pos[max] = j;
+                                        Nodes[inode].pline[max] = iline;
+                                        Nodes[inode].cost[max] = icost;
                                     }
                                 }
-                            } else {
-                                ipos = Stops[s].iUp[i];
-                                for (ii = ipos + 1, k = 0; k < Lines[iline].nUp; k++, ii++) { //Circle
-                                    inode = Lines[iline].up[ii];
-                                    icost = Nodes[s].cost[j] + (ii - ipos) * adj_time + change_time;
-                                    n = Nodes[inode].n;
+                            }
+                        } else {
+                            ipos = Stops[s].iUp[i];
+                            for (ii = ipos + 1, k = 0; k < Lines[iline].nUp; k++, ii++) { //Circle
+                                inode = Lines[iline].up[ii];
+                                icost = Nodes[s].cost[j] + (ii - ipos) * adj_time + change_time;
+                                n = Nodes[inode].n;
 
-                                    if (n < K) {
+                                if (n < K) {
+                                    Q.push(inode);
+                                    Nodes[inode].it[n] = Nodes[s].it[j] + 1;
+                                    Nodes[inode].pre[n] = s;
+                                    Nodes[inode].pos[n] = j;
+                                    Nodes[inode].pline[n] = iline;
+                                    Nodes[inode].cost[n] = icost;
+                                    Nodes[inode].n++;
+                                } else {
+                                    max = (int)(max_element(Nodes[inode].cost, &Nodes[inode].cost[n]) - Nodes[inode].cost);
+                                    if (Nodes[inode].cost[max] > icost) {
                                         Q.push(inode);
-                                        Nodes[inode].it[n] = Nodes[s].it[j] + 1;
-                                        Nodes[inode].pre[n] = s;
-                                        Nodes[inode].pos[n] = j;
-                                        Nodes[inode].pline[n] = iline;
-                                        Nodes[inode].cost[n] = icost;
-                                        Nodes[inode].n++;
-                                    } else {
-                                        max = (int)(max_element(Nodes[inode].cost, &Nodes[inode].cost[n]) - Nodes[inode].cost);
-                                        if (Nodes[inode].cost[max] > icost) {
-                                            Q.push(inode);
-                                            Nodes[inode].it[max] = Nodes[s].it[j] + 1;
-                                            Nodes[inode].pre[max] = s;
-                                            Nodes[inode].pos[max] = j;
-                                            Nodes[inode].pline[max] = iline;
-                                            Nodes[inode].cost[max] = icost;
-                                        }
+                                        Nodes[inode].it[max] = Nodes[s].it[j] + 1;
+                                        Nodes[inode].pre[max] = s;
+                                        Nodes[inode].pos[max] = j;
+                                        Nodes[inode].pline[max] = iline;
+                                        Nodes[inode].cost[max] = icost;
                                     }
                                 }
                             }
@@ -447,24 +456,23 @@ void search()
                 }
             }
         }
-
-        output(O, D);
     }
-
 }
 
 int main(int argc, char *argv[])
 {
     cout << "A Query Program for Urban Public Transportation Network\n";
     cout << "Using k-shortest paths algorithm\n\n";
-    cout << " Transferring time: ";
+    cout << "> Transferring time: ";
     cin >> change_time;
-    cout << " Traveling time of adjacent stops: ";
+    cout << "> Traveling time of adjacent stops: ";
     cin >> adj_time;
+    char fname[MAX];
     if (argc < 2)
-        fin.open("busline.txt");
+        strncpy(fname, "busline.txt", MAX);
     else
-        fin.open(argv[1]);
+        strncpy(fname, argv[1], MAX);
+    fin.open(fname);
     if (fin.fail()) {
         cout << "\nCan't open file!\n";
         return false;
@@ -472,10 +480,40 @@ int main(int argc, char *argv[])
         cout << "\nIt will take a few seconds to load the network data...\n";
     }
 
-    if(load())
-        search();
-    else
+    if(!load())
         cout << "\nError in loading data!\n";
-
+    
+    short O, D, K, G;
+    char ans;
+    cout << "\nRun in interactive mode ? [y/n] ";
+    cin >> ans;
+    switch(tolower(ans)){
+        case 'y':
+            while (input(O, D, K, G)) {
+                search(O, D, K, G);
+                // output to the standard output
+                output(cout, O, D);
+            }
+            break;
+        case 'n':
+            cout << "Searching k shortest paths for all pairs of stops...\n";
+            // output to a file
+            strcat(fname, ".out");
+            ofstream fout(fname);
+            printf("The output will be saved in %s.\n", fname);
+            input(K, G);
+            for (O = 0; O <= maxp; O++) {
+                if (Stops[O].n == 0)
+                    continue;
+                for (D = O + 1; D <= maxp; D++) {
+                    if (Stops[D].n == 0)
+                        continue;
+                    search(O, D, K, G);
+                    output(fout, O, D);
+                }
+            }
+            break;
+    }
+    
     return 0;
 }
