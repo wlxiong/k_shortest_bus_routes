@@ -340,6 +340,46 @@ void output(ostream &fout, short O, short D)
     }
 }
 
+void outputdotm(ostream &fout, short O, short D)
+{
+    // output the first k shortest routes in .m file
+    vector<short> out;
+    vector<short>::reverse_iterator rp;
+    vector< pair<short, short> > s;
+    vector< pair<short, short> >::iterator p;
+    short i, pre, pos, tmp;
+
+    if (Nodes[D].n == 0)
+        fout << "cost(" << O << ", " << D << ") = Inf;";
+    else {
+        for (i = 0; i < Nodes[D].n; i++)
+            s.push_back(pair<short, short>(Nodes[D].cost[i], i));
+        sort(s.begin(), s.end());
+
+        for (p = s.begin(), i = 1; p != s.end(); p++, i++) {
+            fout << setfill(' ');
+            fout << "%% Path" << setw(2) << i endl;
+            fout << "cost(" << O << ", " << D << ") = " << setw(3) << Nodes[D].cost[p->second] << ";" << endl;
+            fout << "path" << setw(2) << Nodes[D].it[p->second] << ')';
+            pre = D;
+            pos = p->second;
+            out.clear();
+            while (pre != O) {
+                out.push_back(pre);
+                out.push_back(Nodes[pre].pline[pos]);
+                tmp = pre;
+                pre = Nodes[pre].pre[pos];
+                pos = Nodes[tmp].pos[pos];
+            }
+            fout << setfill('0');
+            fout << ": S" << setw(4) << O;
+            for (rp = out.rbegin(); rp != out.rend(); rp += 2)
+                fout << "-L" << setw(3) << *rp << "-S" << setw(4) << *(rp + 1);
+            fout << endl;
+        }
+    }
+}
+
 void search(short O, short D, short K, short G)
 {
     // search the first k shortest routes
