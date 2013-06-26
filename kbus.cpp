@@ -342,25 +342,25 @@ void output(ostream &fout, short O, short D)
 
 void outputdotm(ostream &fout, short O, short D)
 {
-    // output the first k shortest routes in .m file
+    // export the first k shortest routes in .m file
     vector<short> out;
     vector<short>::reverse_iterator rp;
     vector< pair<short, short> > s;
     vector< pair<short, short> >::iterator p;
     short i, pre, pos, tmp;
 
-    if (Nodes[D].n == 0)
-        fout << "cost(" << O << ", " << D << ") = Inf;";
+    if (Nodes[D].n == 0) {
+        fout << "cost{" << O << ", " << D << ", 1} = Inf;\n";
+    }
     else {
         for (i = 0; i < Nodes[D].n; i++)
             s.push_back(pair<short, short>(Nodes[D].cost[i], i));
         sort(s.begin(), s.end());
 
         for (p = s.begin(), i = 1; p != s.end(); p++, i++) {
-            fout << setfill(' ');
-            fout << "%% Path" << setw(2) << i endl;
-            fout << "cost(" << O << ", " << D << ") = " << setw(3) << Nodes[D].cost[p->second] << ";" << endl;
-            fout << "path" << setw(2) << Nodes[D].it[p->second] << ')';
+            fout << "% path" << i << "\n";
+            fout << "cost{" << O << ", " << D << ", " << i << "} = " << Nodes[D].cost[p->second] << ";\n";
+            fout << "tran{" << O << ", " << D << ", " << i << "} = " << Nodes[D].it[p->second] << ";\n";
             pre = D;
             pos = p->second;
             out.clear();
@@ -371,13 +371,19 @@ void outputdotm(ostream &fout, short O, short D)
                 pre = Nodes[pre].pre[pos];
                 pos = Nodes[tmp].pos[pos];
             }
-            fout << setfill('0');
-            fout << ": S" << setw(4) << O;
+            // print nodes on the path
+            fout << "node{" << O << ", " << D << ", " << i << "} = [" << O;
             for (rp = out.rbegin(); rp != out.rend(); rp += 2)
-                fout << "-L" << setw(3) << *rp << "-S" << setw(4) << *(rp + 1);
-            fout << endl;
+                fout << "\t" << *(rp + 1);
+            fout << "];\n";
+            // print lines on the path
+            fout << "line{" << O << ", " << D << ", " << i << "} = [";
+            for (rp = out.rbegin(); rp != out.rend(); rp += 2)
+                fout << "\t" << *rp;
+            fout << "];\n";
         }
     }
+    fout << endl;
 }
 
 void search(short O, short D, short K, short G)
@@ -507,12 +513,12 @@ int main(int argc, char *argv[])
     cin >> change_time;
     cout << "> Traveling time of adjacent stops: ";
     cin >> adj_time;
-    char fname[MAX];
+    char finname[MAX], foutname[MAX], fmatname[MAX];
     if (argc < 2)
-        strncpy(fname, "busline.txt", MAX);
+        strncpy(finname, "busline.txt", MAX);
     else
-        strncpy(fname, argv[1], MAX);
-    fin.open(fname);
+        strncpy(finname, argv[1], MAX);
+    fin.open(finname);
     if (fin.fail()) {
         cout << "\nCan't open file!\n";
         return false;
@@ -537,11 +543,21 @@ int main(int argc, char *argv[])
             break;
         case 'n':
             cout << "Searching k shortest paths for all pairs of stops...\n";
-            // output to a file
-            strcat(fname, ".out");
-            ofstream fout(fname);
-            printf("The output will be saved in %s.\n", fname);
             input(K, G);
+            // output to a file
+            strncpy(foutname, finname, MAX);
+            strncpy(fmatname, finname, MAX);
+            strcat(foutname, ".out");
+            strcat(fmatname, ".m");
+            ofstream fout(foutname);
+            ofstream fmat(fmatname);
+            // define cells in .m file
+            fmat << "% define cells for outputs\n";
+            fmat << "cost = cell(" << maxp << ", " << maxp << ", " << K << ");\n";
+            fmat << "tran = cell(" << maxp << ", " << maxp << ", " << K << ");\n";
+            fmat << "node = cell(" << maxp << ", " << maxp << ", " << K << ");\n";
+            fmat << "line = cell(" << maxp << ", " << maxp << ", " << K << ");\n" << endl;
+            printf("The output will be saved in %s & %s.\n", foutname, fmatname);
             for (O = 0; O <= maxp; O++) {
                 if (Stops[O].n == 0)
                     continue;
@@ -550,6 +566,7 @@ int main(int argc, char *argv[])
                         continue;
                     search(O, D, K, G);
                     output(fout, O, D);
+                    outputdotm(fmat, O, D);
                 }
             }
             break;
