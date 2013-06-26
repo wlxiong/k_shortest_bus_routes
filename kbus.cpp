@@ -350,7 +350,7 @@ void outputdotm(ostream &fout, short O, short D)
     short i, pre, pos, tmp;
 
     if (Nodes[D].n == 0) {
-        fout << "cost{" << O << ", " << D << ", 1} = Inf;\n";
+        fout << "cost(" << O << ", " << D << ", 1) = Inf;\n";
     }
     else {
         for (i = 0; i < Nodes[D].n; i++)
@@ -359,8 +359,8 @@ void outputdotm(ostream &fout, short O, short D)
 
         for (p = s.begin(), i = 1; p != s.end(); p++, i++) {
             fout << "% path" << i << "\n";
-            fout << "cost{" << O << ", " << D << ", " << i << "} = " << Nodes[D].cost[p->second] << ";\n";
-            fout << "tran{" << O << ", " << D << ", " << i << "} = " << Nodes[D].it[p->second] << ";\n";
+            fout << "cost(" << O << ", " << D << ", " << i << ") = " << Nodes[D].cost[p->second] << ";\n";
+            fout << "tran(" << O << ", " << D << ", " << i << ") = " << Nodes[D].it[p->second] << ";\n";
             pre = D;
             pos = p->second;
             out.clear();
@@ -553,8 +553,8 @@ int main(int argc, char *argv[])
             ofstream fmat(fmatname);
             // define cells in .m file
             fmat << "% define cells for outputs\n";
-            fmat << "cost = cell(" << maxp << ", " << maxp << ", " << K << ");\n";
-            fmat << "tran = cell(" << maxp << ", " << maxp << ", " << K << ");\n";
+            fmat << "cost = nan(" << maxp << ", " << maxp << ", " << K << ");\n";
+            fmat << "tran = nan(" << maxp << ", " << maxp << ", " << K << ");\n";
             fmat << "node = cell(" << maxp << ", " << maxp << ", " << K << ");\n";
             fmat << "line = cell(" << maxp << ", " << maxp << ", " << K << ");\n" << endl;
             printf("The output will be saved in %s & %s.\n", foutname, fmatname);
