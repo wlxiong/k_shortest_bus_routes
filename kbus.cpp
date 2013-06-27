@@ -559,11 +559,10 @@ int main(int argc, char *argv[])
             fmat << "line = cell(" << maxp << ", " << maxp << ", " << K << ");\n" << endl;
             printf("The output will be saved in %s & %s.\n", foutname, fmatname);
             for (O = 0; O <= maxp; O++) {
-                if (Stops[O].n == 0)
-                    continue;
-                for (D = O + 1; D <= maxp; D++) {
-                    if (Stops[D].n == 0)
-                        continue;
+                if (Stops[O].n == 0) continue;
+                for (D = 0; D <= maxp; D++) {
+                    if (O == D) continue;
+                    if (Stops[D].n == 0) continue;
                     search(O, D, K, G);
                     output(fout, O, D);
                     outputdotm(fmat, O, D);
